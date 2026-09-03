@@ -8,9 +8,11 @@
 export const AI_CONFIG = {
   geminiApiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY ?? '',
   groqApiKey: process.env.EXPO_PUBLIC_GROQ_API_KEY ?? '',
+  apiUrl: process.env.EXPO_PUBLIC_API_URL ?? '',
 };
 
 export const hasGeminiKey = AI_CONFIG.geminiApiKey.length > 0;
 export const hasGroqKey = AI_CONFIG.groqApiKey.length > 0;
+export const hasApiUrl = AI_CONFIG.apiUrl.length > 0;
 
-export const isAIConfigured = hasGeminiKey || hasGroqKey;
+export const isAIConfigured = hasGeminiKey || hasGroqKey || hasApiUrl;

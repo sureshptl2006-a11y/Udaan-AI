@@ -199,26 +199,16 @@ Generate all of the following inside a single JSON object:
 
 ### WRITING STYLE
 
-Use professional, polished e-commerce language.
+Write like a top real e-commerce listing, NOT like a cautious disclaimer.
 
-The tone should be:
-
-* Trustworthy
-* Informative
-* Concise
-* Customer-focused
-* Professional
-* Easy to scan
-
-Avoid excessive adjectives and unnecessary marketing language.
-
-Do not use emojis.
-
-Do not make unsupported claims.
-
-Do not mention that AI was used.
-
-Do not mention the raw photograph or the process of analyzing the photograph.
+- Write in a confident, natural, selling tone. Do not constantly hedge.
+- Do NOT write sentences like "please note that specific material composition and exact dimensions were not provided" or "it is recommended to consult with a healthcare professional." That kind of weak, legalistic copy is not marketplace quality.
+- If a precise specification (exact dimensions, clinical certification, precise material blend) is truly unknown for THIS product, simply do not state that specific number. Omit it - do not draw attention to its absence.
+- Only mention consulting a professional if it is genuinely relevant to safe use of that product type (e.g. medical devices) - keep it as a brief, natural closing touch, NOT a paragraph of caveats.
+- Use realistic, descriptive, benefit-oriented language a customer finds useful.
+- Avoid emojis. Avoid marketing hype like "best", "guaranteed", "clinically proven" unless the data actually supports it.
+- Do not mention that AI was used.
+- Do not mention the raw photograph or the process of analyzing the photograph.
 
 ### IMAGE ANALYSIS RULE
 

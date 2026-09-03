@@ -1,5 +1,5 @@
 import { ProductImage, VoiceLanguageCode } from '@/types/product';
-import { hasGroqKey } from './aiConfig';
+import { AI_CONFIG, hasGroqKey, hasApiUrl } from './aiConfig';
 import { generateCatalogWithGroq } from './groqService';
 
 export interface AICatalogRequest {
@@ -78,10 +78,38 @@ class GroqAICatalogService implements AICatalogService {
   }
 }
 
-// Default: mock. When a Groq key is configured, use the real service.
-let aiCatalogService: AICatalogService = hasGroqKey
-  ? new GroqAICatalogService()
-  : new MockAICatalogService();
+class BackendAICatalogService implements AICatalogService {
+  async generateCatalog(params: AICatalogRequest): Promise<AICatalogResult> {
+    const baseUrl = AI_CONFIG.apiUrl.replace(/\/$/, '');
+    const res = await fetch(`${baseUrl}/api/generate-description`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transcript: params.transcript,
+        images: params.images,
+        language: params.language,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Server error ${res.status}: ${body.slice(0, 200)}`);
+    }
+
+    const data = (await res.json()) as { catalog?: AICatalogResult };
+    if (!data.catalog) {
+      throw new Error('Server returned no catalog data');
+    }
+    return data.catalog;
+  }
+}
+
+// Priority: backend (web-search enriched) > direct Groq > mock.
+let aiCatalogService: AICatalogService = hasApiUrl
+  ? new BackendAICatalogService()
+  : hasGroqKey
+    ? new GroqAICatalogService()
+    : new MockAICatalogService();
 
 export function getAICatalogService(): AICatalogService {
   return aiCatalogService;
