@@ -34,6 +34,32 @@ export interface ProductDraft {
   seoKeywords: string[];
   tags: string[];
   category: string;
+  rawMaterialCost?: number;
+  makingCost?: number;
+  totalCost?: number;
+  pricing?: ProductPricing;
+  generatedImage?: string | null;
+}
+
+export interface CompetitorPrice {
+  platform: string;
+  productName: string;
+  price: number;
+  currency: string;
+}
+
+export interface ProductPricing {
+  rawMaterialCost: number;
+  makingCost: number;
+  totalCost: number;
+  suggestedWholesalePrice: number;
+  suggestedRetailPrice: number;
+  minRetailPrice: number;
+  maxRetailPrice: number;
+  currency: string;
+  confidence: 'low' | 'medium' | 'high';
+  competitors: CompetitorPrice[];
+  reasoning: string;
 }
 
 export const AVAILABLE_LANGUAGES: VoiceLanguage[] = [
@@ -62,5 +88,6 @@ export function createEmptyDraft(): ProductDraft {
     seoKeywords: [],
     tags: [],
     category: '',
+    generatedImage: null,
   };
 }
