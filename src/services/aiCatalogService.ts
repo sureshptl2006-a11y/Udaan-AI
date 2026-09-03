@@ -1,6 +1,7 @@
 import { ProductImage, VoiceLanguageCode } from '@/types/product';
 import { AI_CONFIG, hasGroqKey, hasApiUrl } from './aiConfig';
 import { generateCatalogWithGroq } from './groqService';
+import { manipulateAsync, SaveFormat } from 'expo-image-manipulator';
 
 export interface AICatalogRequest {
   images: ProductImage[];
@@ -78,15 +79,46 @@ class GroqAICatalogService implements AICatalogService {
   }
 }
 
+const MAX_IMAGE_PIXELS = 768;
+
+/** Downscale + compress an image URI to a small base64 JPEG for sending to the backend. */
+async function toSmallBase64(uri: string): Promise<{ base64: string; mimeType: string } | null> {
+  try {
+    const result = await manipulateAsync(
+      uri,
+      [{ resize: { width: MAX_IMAGE_PIXELS } }],
+      { compress: 0.7, format: SaveFormat.JPEG, base64: true }
+    );
+    if (result.base64) {
+      return { base64: result.base64, mimeType: 'image/jpeg' };
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 class BackendAICatalogService implements AICatalogService {
   async generateCatalog(params: AICatalogRequest): Promise<AICatalogResult> {
     const baseUrl = AI_CONFIG.apiUrl.replace(/\/$/, '');
+
+    // Send the first photo (downscaled to base64) so the backend can analyze it.
+    let imagePayload: { uri: string; base64?: string; mimeType?: string }[] =
+      params.images.map((img) => ({ uri: img.uri }));
+    const first = params.images[0];
+    if (first) {
+      const encoded = await toSmallBase64(first.uri);
+      if (encoded) {
+        imagePayload[0] = { uri: first.uri, ...encoded };
+      }
+    }
+
     const res = await fetch(`${baseUrl}/api/generate-description`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         transcript: params.transcript,
-        images: params.images,
+        images: imagePayload,
         language: params.language,
       }),
     });
