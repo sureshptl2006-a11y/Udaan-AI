@@ -1,4 +1,6 @@
 import { ProductImage, VoiceLanguageCode } from '@/types/product';
+import { hasGroqKey } from './aiConfig';
+import { generateCatalogWithGroq } from './groqService';
 
 export interface AICatalogRequest {
   images: ProductImage[];
@@ -51,15 +53,16 @@ class MockAICatalogService implements AICatalogService {
   }
 }
 
-// In production, replace this with a real backend API call.
-// The architecture is: React Native App → Backend API → AI Vision + LLM
-// such as OpenAI GPT-4 Vision, Google Gemini, or Anthropic Claude.
-// The backend should handle:
-// 1. Receiving product images + transcript
-// 2. Sending images to a vision model for analysis
-// 3. Combining vision analysis with transcript
-// 4. Generating SEO-optimized product catalog
-let aiCatalogService: AICatalogService = new MockAICatalogService();
+class GroqAICatalogService implements AICatalogService {
+  async generateCatalog(params: AICatalogRequest): Promise<AICatalogResult> {
+    return generateCatalogWithGroq(params);
+  }
+}
+
+// Default: mock. When a Groq key is configured, use the real service.
+let aiCatalogService: AICatalogService = hasGroqKey
+  ? new GroqAICatalogService()
+  : new MockAICatalogService();
 
 export function getAICatalogService(): AICatalogService {
   return aiCatalogService;
