@@ -35,7 +35,11 @@ export default function AICatalogScreen() {
       title: '',
       shortDescription: '',
       description: '',
+      keyFeatures: [],
+      idealFor: [],
       seoKeywords: [],
+      metaTitle: '',
+      metaDescription: '',
       tags: [],
       category: '',
       generatedImage: null,
@@ -288,6 +292,41 @@ export default function AICatalogScreen() {
           </View>
         </View>
 
+        {/* Key Features */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Key Features</Text>
+          <View style={styles.fieldCard}>
+            {draft.keyFeatures.length > 0 ? (
+              draft.keyFeatures.map((feature, i) => (
+                <View key={`feat-${i}`} style={styles.bulletRow}>
+                  <Text style={styles.bulletDot}>•</Text>
+                  <Text style={styles.bulletText}>{feature}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.sectionHint}>
+                No key features available.
+              </Text>
+            )}
+          </View>
+        </View>
+
+        {/* Ideal For / Use Cases */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Ideal For / Use Cases</Text>
+          <View style={styles.tagsContainer}>
+            {draft.idealFor.length > 0 ? (
+              draft.idealFor.map((item, i) => (
+                <View key={`ideal-${i}`} style={styles.tag}>
+                  <Text style={styles.tagText}>{item}</Text>
+                </View>
+              ))
+            ) : (
+              <Text style={styles.sectionHint}>No use cases available.</Text>
+            )}
+          </View>
+        </View>
+
         {/* SEO Keywords */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>SEO Keywords</Text>
@@ -310,6 +349,45 @@ export default function AICatalogScreen() {
               </View>
             ))}
           </View>
+        </View>
+
+        {/* Meta Title & Meta Description */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Meta Title</Text>
+          <View style={styles.fieldCard}>
+            <TextInput
+              style={styles.fieldInput}
+              value={draft.metaTitle}
+              onChangeText={(text) =>
+                setDraft((prev) => ({ ...prev, metaTitle: text }))
+              }
+              placeholder="SEO meta title (50-60 characters)"
+              placeholderTextColor={ArtisanColors.muted}
+            />
+          </View>
+          <Text style={styles.sectionHint}>
+            {draft.metaTitle.length}/60 characters
+          </Text>
+        </View>
+
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>Meta Description</Text>
+          <View style={styles.fieldCard}>
+            <TextInput
+              style={[styles.fieldInput, styles.fieldInputLarge]}
+              value={draft.metaDescription}
+              onChangeText={(text) =>
+                setDraft((prev) => ({ ...prev, metaDescription: text }))
+              }
+              multiline
+              textAlignVertical="top"
+              placeholder="SEO meta description (140-160 characters)"
+              placeholderTextColor={ArtisanColors.muted}
+            />
+          </View>
+          <Text style={styles.sectionHint}>
+            {draft.metaDescription.length}/160 characters
+          </Text>
         </View>
 
         {/* Voice Transcript */}
@@ -677,6 +755,23 @@ const styles = StyleSheet.create({
     fontSize: 12,
     fontWeight: '600',
     color: ArtisanColors.darkMedium,
+  },
+  bulletRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: 8,
+  },
+  bulletDot: {
+    fontSize: 14,
+    color: ArtisanColors.primary,
+    marginRight: 8,
+    lineHeight: 20,
+  },
+  bulletText: {
+    flex: 1,
+    fontSize: 14,
+    color: ArtisanColors.dark,
+    lineHeight: 21,
   },
 
   // Transcript

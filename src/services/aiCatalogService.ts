@@ -12,7 +12,11 @@ export interface AICatalogResult {
   title: string;
   shortDescription: string;
   description: string;
+  keyFeatures: string[];
+  idealFor: string[];
   seoKeywords: string[];
+  metaTitle: string;
+  metaDescription: string;
   tags: string[];
   category: string;
 }
@@ -32,6 +36,18 @@ class MockAICatalogService implements AICatalogService {
         'A beautifully handcrafted cotton tote bag featuring traditional embroidery and a practical everyday design.',
       description:
         'This handcrafted cotton tote bag showcases the rich tradition of Indian artisan craftsmanship. Each stitch reflects generations of skilled handwork, making every piece unique.\n\nThe bag is designed for everyday use with a spacious interior that comfortably holds your daily essentials. The traditional embroidery patterns add a touch of cultural elegance to a practical accessory.\n\nMade with care by skilled artisans, this bag represents sustainable fashion and supports traditional craft communities. The natural cotton material is both durable and eco-friendly.',
+      keyFeatures: [
+        'Traditional hand-embroidery detailing',
+        'Spacious interior for daily essentials',
+        'Lightweight and easy to carry',
+        'Made from natural cotton',
+        'Versatile for everyday or casual outings',
+      ],
+      idealFor: [
+        'Everyday errands and shopping',
+        'Work and travel essentials',
+        'Gifting to craft and fashion lovers',
+      ],
       seoKeywords: [
         'handcrafted cotton bag',
         'handmade embroidered bag',
@@ -39,6 +55,9 @@ class MockAICatalogService implements AICatalogService {
         'traditional Indian handicraft',
         'cotton shoulder bag',
       ],
+      metaTitle: 'Handcrafted Embroidered Cotton Tote Bag',
+      metaDescription:
+        'A handcrafted cotton tote bag with traditional embroidery, a spacious interior, and a practical everyday design for all your daily essentials.',
       tags: [
         'handmade',
         'artisan',

@@ -310,7 +310,11 @@ export default function AddProductScreen() {
         title: result.title,
         shortDescription: result.shortDescription,
         description: result.description,
+        keyFeatures: result.keyFeatures ?? [],
+        idealFor: result.idealFor ?? [],
         seoKeywords: result.seoKeywords,
+        metaTitle: result.metaTitle ?? '',
+        metaDescription: result.metaDescription ?? '',
         tags: result.tags,
         category: result.category,
       };

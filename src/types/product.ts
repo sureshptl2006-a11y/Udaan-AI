@@ -31,7 +31,11 @@ export interface ProductDraft {
   title: string;
   shortDescription: string;
   description: string;
+  keyFeatures: string[];
+  idealFor: string[];
   seoKeywords: string[];
+  metaTitle: string;
+  metaDescription: string;
   tags: string[];
   category: string;
   rawMaterialCost?: number;
@@ -85,7 +89,11 @@ export function createEmptyDraft(): ProductDraft {
     title: '',
     shortDescription: '',
     description: '',
+    keyFeatures: [],
+    idealFor: [],
     seoKeywords: [],
+    metaTitle: '',
+    metaDescription: '',
     tags: [],
     category: '',
     generatedImage: null,
