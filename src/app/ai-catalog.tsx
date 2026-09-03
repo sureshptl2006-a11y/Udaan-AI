@@ -45,6 +45,21 @@ export default function AICatalogScreen() {
   const [pricing, setPricing] = useState<ProductPricing | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isGeneratingPricing, setIsGeneratingPricing] = useState(false);
+  const [inlineMessage, setInlineMessage] = useState<{
+    type: 'error' | 'success';
+    text: string;
+  } | null>(null);
+
+  const showInline = (
+    type: 'error' | 'success',
+    text: string,
+    alertTitle?: string
+  ) => {
+    setInlineMessage({ type, text });
+    if (alertTitle) {
+      Alert.alert(alertTitle, text);
+    }
+  };
 
   const handleContinue = () => {
     Alert.alert(
@@ -54,17 +69,20 @@ export default function AICatalogScreen() {
   };
 
   const handleGenerateImage = async () => {
+    setInlineMessage(null);
     if (!hasGeminiKey) {
-      Alert.alert(
-        'Gemini Key Required',
-        'Add your EXPO_PUBLIC_GEMINI_API_KEY to .env.local to enable AI image generation.'
+      showInline(
+        'error',
+        'Add your EXPO_PUBLIC_GEMINI_API_KEY to .env.local to enable AI image generation.',
+        'Gemini Key Required'
       );
       return;
     }
     if (!draft.title && !draft.description) {
-      Alert.alert(
-        'Need Information',
-        'Please review the title and description before generating an image.'
+      showInline(
+        'error',
+        'Please review the title and description before generating an image.',
+        'Need Information'
       );
       return;
     }
@@ -77,10 +95,12 @@ export default function AICatalogScreen() {
         productDescription: draft.description,
       });
       setDraft((prev) => ({ ...prev, generatedImage: result.base64Image }));
+      showInline('success', 'Product image generated successfully.');
     } catch {
-      Alert.alert(
-        'Image Generation Failed',
-        'Could not generate the image. Please try again later.'
+      showInline(
+        'error',
+        'Could not generate the image. Please try again later. The Gemini free tier has no image quota — enable billing at aistudio.google.com.',
+        'Image Generation Failed'
       );
     } finally {
       setIsGeneratingImage(false);
@@ -88,6 +108,7 @@ export default function AICatalogScreen() {
   };
 
   const handleGeneratePricing = async () => {
+    setInlineMessage(null);
     setIsGeneratingPricing(true);
     try {
       const service = getPricingService();
@@ -99,10 +120,12 @@ export default function AICatalogScreen() {
         makingCost: draft.makingCost,
       });
       setPricing(result);
+      showInline('success', 'Pricing suggestions generated.');
     } catch {
-      Alert.alert(
-        'Pricing Failed',
-        'Could not generate pricing suggestions. Please try again.'
+      showInline(
+        'error',
+        'Could not generate pricing suggestions. Please try again.',
+        'Pricing Failed'
       );
     } finally {
       setIsGeneratingPricing(false);
@@ -155,6 +178,20 @@ export default function AICatalogScreen() {
           Review your AI-generated product listing. You can edit anything below
           before continuing.
         </Text>
+
+        {/* Inline feedback (works on web where Alert.alert is a no-op) */}
+        {inlineMessage ? (
+          <View
+            style={[
+              styles.inlineMessage,
+              inlineMessage.type === 'error'
+                ? styles.inlineMessageError
+                : styles.inlineMessageSuccess,
+            ]}
+          >
+            <Text style={styles.inlineMessageText}>{inlineMessage.text}</Text>
+          </View>
+        ) : null}
 
         {/* Product Photos Preview */}
         {draft.images.length > 0 && (
@@ -527,6 +564,28 @@ const styles = StyleSheet.create({
     color: ArtisanColors.mutedMedium,
     lineHeight: 21,
     marginBottom: 24,
+  },
+  inlineMessage: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginBottom: 20,
+  },
+  inlineMessageError: {
+    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.35)',
+  },
+  inlineMessageSuccess: {
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(22, 163, 74, 0.35)',
+  },
+  inlineMessageText: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 19,
+    color: ArtisanColors.dark,
   },
 
   // Sections

@@ -44,6 +44,11 @@ export default function AddProductScreen() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [inlineMessage, setInlineMessage] = useState<{
+    type: 'error' | 'success';
+    text: string;
+  } | null>(null);
+  const [showManualInput, setShowManualInput] = useState(false);
   const [rawMaterialCost, setRawMaterialCost] = useState('');
   const [makingCost, setMakingCost] = useState('');
 
@@ -256,16 +261,30 @@ export default function AddProductScreen() {
 
   // --- AI Generation ---
 
+  const showInline = (
+    type: 'error' | 'success',
+    text: string,
+    alertTitle?: string
+  ) => {
+    setInlineMessage({ type, text });
+    if (alertTitle) {
+      Alert.alert(alertTitle, text);
+    }
+  };
+
   const handleGenerateCatalog = async () => {
+    setInlineMessage(null);
+
     if (draft.images.length === 0) {
-      Alert.alert('Add Photo', 'Please add at least one product photo.');
+      showInline('error', 'Please add at least one product photo to continue.', 'Add Photo');
       return;
     }
 
     if (!draft.transcript.trim()) {
-      Alert.alert(
-        'Add Description',
-        'Please tell us about your product by recording a voice description.'
+      showInline(
+        'error',
+        'Please tell us about your product by recording a voice description.',
+        'Add Description'
       );
       return;
     }
@@ -300,10 +319,13 @@ export default function AddProductScreen() {
         pathname: '/ai-catalog',
         params: { draft: JSON.stringify(updatedDraft) },
       });
-    } catch {
-      Alert.alert(
-        'Generation Error',
-        'Could not generate the product description. Please try again.'
+    } catch (err) {
+      const reason =
+        err instanceof Error ? err.message : 'Please try again.';
+      showInline(
+        'error',
+        `Could not generate the product description. ${reason}`,
+        'Generation Error'
       );
     } finally {
       setIsGenerating(false);
@@ -546,8 +568,35 @@ export default function AddProductScreen() {
             </View>
           ) : null}
 
+          {/* Type a description instead (works on web / without a mic) */}
+          <Pressable
+            style={styles.typeInsteadButton}
+            onPress={() => setShowManualInput((prev) => !prev)}
+          >
+            <Text style={styles.typeInsteadText}>
+              {showManualInput ? 'Hide typed description' : '✍️ Type a description instead'}
+            </Text>
+          </Pressable>
+
+          {showManualInput && (
+            <View style={styles.transcriptContainer}>
+              <Text style={styles.transcriptLabel}>Your description:</Text>
+              <TextInput
+                style={styles.transcriptInput}
+                value={draft.transcript}
+                onChangeText={(text) =>
+                  setDraft((prev) => ({ ...prev, transcript: text }))
+                }
+                multiline
+                textAlignVertical="top"
+                placeholder="Describe your product. For example: a hand-woven cotton tote bag with green and gold embroidery, about 40cm wide, a small inner pocket, and long comfortable handles."
+                placeholderTextColor={ArtisanColors.muted}
+              />
+            </View>
+          )}
+
           {/* Transcribed text */}
-          {hasTranscript && (
+          {hasTranscript && !showManualInput && (
             <View style={styles.transcriptContainer}>
               <Text style={styles.transcriptLabel}>Your description:</Text>
               <TextInput
@@ -602,6 +651,20 @@ export default function AddProductScreen() {
             </View>
           </View>
         </View>
+
+        {/* Inline feedback (works on web where Alert.alert is a no-op) */}
+        {inlineMessage ? (
+          <View
+            style={[
+              styles.inlineMessage,
+              inlineMessage.type === 'error'
+                ? styles.inlineMessageError
+                : styles.inlineMessageSuccess,
+            ]}
+          >
+            <Text style={styles.inlineMessageText}>{inlineMessage.text}</Text>
+          </View>
+        ) : null}
 
         {/* Continue Button */}
         <Pressable
@@ -1104,6 +1167,20 @@ const styles = StyleSheet.create({
   },
 
   // Transcript
+  typeInsteadButton: {
+    marginTop: 14,
+    paddingVertical: 10,
+    alignItems: 'center',
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: ArtisanColors.borderMedium,
+    backgroundColor: ArtisanColors.iconBg,
+  },
+  typeInsteadText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: ArtisanColors.primary,
+  },
   transcriptContainer: {
     marginTop: 14,
     backgroundColor: ArtisanColors.white,
@@ -1234,6 +1311,28 @@ const styles = StyleSheet.create({
     lineHeight: 17,
     marginTop: 12,
     paddingHorizontal: 15,
+  },
+  inlineMessage: {
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 10,
+    marginTop: 4,
+  },
+  inlineMessageError: {
+    backgroundColor: 'rgba(220, 38, 38, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(220, 38, 38, 0.35)',
+  },
+  inlineMessageSuccess: {
+    backgroundColor: 'rgba(22, 163, 74, 0.12)',
+    borderWidth: 1,
+    borderColor: 'rgba(22, 163, 74, 0.35)',
+  },
+  inlineMessageText: {
+    fontSize: 13,
+    fontWeight: '500',
+    lineHeight: 19,
+    color: ArtisanColors.dark,
   },
 
   // Modals
