@@ -9,11 +9,15 @@ import {
   Image,
   Alert,
   FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { router, useLocalSearchParams } from 'expo-router';
 import { ArtisanColors } from '@/constants/colors';
-import { ProductDraft } from '@/types/product';
+import { ProductDraft, ProductPricing } from '@/types/product';
+import { hasGeminiKey } from '@/services/aiConfig';
+import { generateProductImageWithGemini } from '@/services/geminiService';
+import { getPricingService } from '@/services/pricingService';
 
 export default function AICatalogScreen() {
   const params = useLocalSearchParams<{ draft: string }>();
@@ -34,8 +38,13 @@ export default function AICatalogScreen() {
       seoKeywords: [],
       tags: [],
       category: '',
+      generatedImage: null,
     };
   });
+
+  const [pricing, setPricing] = useState<ProductPricing | null>(null);
+  const [isGeneratingImage, setIsGeneratingImage] = useState(false);
+  const [isGeneratingPricing, setIsGeneratingPricing] = useState(false);
 
   const handleContinue = () => {
     Alert.alert(
@@ -44,11 +53,60 @@ export default function AICatalogScreen() {
     );
   };
 
-  const handleRegenerate = () => {
-    Alert.alert(
-      'Regenerate',
-      'This feature will allow you to regenerate the AI description. Coming soon.'
-    );
+  const handleGenerateImage = async () => {
+    if (!hasGeminiKey) {
+      Alert.alert(
+        'Gemini Key Required',
+        'Add your EXPO_PUBLIC_GEMINI_API_KEY to .env.local to enable AI image generation.'
+      );
+      return;
+    }
+    if (!draft.title && !draft.description) {
+      Alert.alert(
+        'Need Information',
+        'Please review the title and description before generating an image.'
+      );
+      return;
+    }
+
+    setIsGeneratingImage(true);
+    try {
+      const result = await generateProductImageWithGemini({
+        images: draft.images,
+        productTitle: draft.title,
+        productDescription: draft.description,
+      });
+      setDraft((prev) => ({ ...prev, generatedImage: result.base64Image }));
+    } catch {
+      Alert.alert(
+        'Image Generation Failed',
+        'Could not generate the image. Please try again later.'
+      );
+    } finally {
+      setIsGeneratingImage(false);
+    }
+  };
+
+  const handleGeneratePricing = async () => {
+    setIsGeneratingPricing(true);
+    try {
+      const service = getPricingService();
+      const result = await service.generatePricing({
+        images: draft.images,
+        transcript: draft.transcript,
+        language: draft.voiceLanguage,
+        rawMaterialCost: draft.rawMaterialCost,
+        makingCost: draft.makingCost,
+      });
+      setPricing(result);
+    } catch {
+      Alert.alert(
+        'Pricing Failed',
+        'Could not generate pricing suggestions. Please try again.'
+      );
+    } finally {
+      setIsGeneratingPricing(false);
+    }
   };
 
   return (
@@ -225,10 +283,137 @@ export default function AICatalogScreen() {
           </View>
         </View>
 
-        {/* Regenerate */}
-        <Pressable style={styles.regenerateButton} onPress={handleRegenerate}>
-          <Text style={styles.regenerateText}>⟳ Regenerate</Text>
-        </Pressable>
+        {/* AI Image Generation */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>AI Product Image</Text>
+          <Text style={styles.sectionHint}>
+            Use Gemini to create a professional e-commerce product image from
+            your photos.
+          </Text>
+
+          {draft.generatedImage ? (
+            <View style={styles.fieldCard}>
+              <Image
+                source={{ uri: `data:image/png;base64,${draft.generatedImage}` }}
+                style={styles.generatedImage}
+                resizeMode="contain"
+              />
+              <Pressable
+                style={styles.regenerateButton}
+                onPress={handleGenerateImage}
+                disabled={isGeneratingImage}
+              >
+                {isGeneratingImage ? (
+                  <ActivityIndicator size="small" color={ArtisanColors.primary} />
+                ) : (
+                  <Text style={styles.regenerateText}>
+                    Regenerate Image
+                  </Text>
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              style={styles.regenerateButton}
+              onPress={handleGenerateImage}
+              disabled={isGeneratingImage}
+            >
+              {isGeneratingImage ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator size="small" color={ArtisanColors.primary} />
+                  <Text style={styles.regenerateText}>Creating image...</Text>
+                </View>
+              ) : (
+                <Text style={styles.regenerateText}>🎨 Generate Product Image</Text>
+              )}
+            </Pressable>
+          )}
+        </View>
+
+        {/* AI Pricing */}
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>AI Price Suggestion</Text>
+          <Text style={styles.sectionHint}>
+            Compare with competitor prices for similar products to find the best
+            selling price.
+          </Text>
+
+          {pricing ? (
+            <View style={styles.pricingCard}>
+              <Text style={styles.pricingTitle}>Suggested Retail Price</Text>
+              <Text style={styles.pricingAmount}>
+                ₹{pricing.suggestedRetailPrice}
+              </Text>
+              <View style={styles.pricingRow}>
+                <View style={styles.pricingItem}>
+                  <Text style={styles.pricingItemLabel}>Wholesale</Text>
+                  <Text style={styles.pricingItemValue}>
+                    ₹{pricing.suggestedWholesalePrice}
+                  </Text>
+                </View>
+                <View style={styles.pricingItem}>
+                  <Text style={styles.pricingItemLabel}>Range</Text>
+                  <Text style={styles.pricingItemValue}>
+                    ₹{pricing.minRetailPrice} – ₹{pricing.maxRetailPrice}
+                  </Text>
+                </View>
+              </View>
+
+              {pricing.competitors.length > 0 && (
+                <View style={styles.competitorContainer}>
+                  <Text style={styles.competitorTitle}>
+                    Competitor Reference
+                  </Text>
+                  {pricing.competitors.map((c, i) => (
+                    <View key={`comp-${i}`} style={styles.competitorRow}>
+                      <Text style={styles.competitorName}>
+                        {c.platform}: {c.productName}
+                      </Text>
+                      <Text style={styles.competitorPrice}>
+                        ₹{c.price}
+                      </Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {pricing.reasoning ? (
+                <Text style={styles.pricingReasoning}>{pricing.reasoning}</Text>
+              ) : null}
+
+              <Pressable
+                style={styles.regenerateButton}
+                onPress={handleGeneratePricing}
+                disabled={isGeneratingPricing}
+              >
+                {isGeneratingPricing ? (
+                  <Text style={styles.regenerateText}>Analyzing prices...</Text>
+                ) : (
+                  <Text style={styles.regenerateText}>⟳ Refresh Price</Text>
+                )}
+              </Pressable>
+            </View>
+          ) : (
+            <Pressable
+              style={styles.regenerateButton}
+              onPress={handleGeneratePricing}
+              disabled={isGeneratingPricing}
+            >
+              {isGeneratingPricing ? (
+                <View style={styles.loadingRow}>
+                  <ActivityIndicator size="small" color={ArtisanColors.primary} />
+                  <Text style={styles.regenerateText}>
+                    Comparing competitor prices...
+                  </Text>
+                </View>
+              ) : (
+                <Text style={styles.regenerateText}>
+                  💰 Suggest Best Selling Price
+                </Text>
+              )}
+            </Pressable>
+          )}
+        </View>
 
         {/* Continue Button */}
         <Pressable style={styles.continueButton} onPress={handleContinue}>
@@ -465,6 +650,100 @@ const styles = StyleSheet.create({
     color: ArtisanColors.muted,
     fontSize: 14,
     fontWeight: '600',
+  },
+  sectionHint: {
+    fontSize: 12,
+    color: ArtisanColors.muted,
+    lineHeight: 17,
+    marginBottom: 10,
+  },
+  loadingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+  },
+  generatedImage: {
+    width: '100%',
+    height: 240,
+    borderRadius: 12,
+    marginBottom: 10,
+  },
+  pricingCard: {
+    backgroundColor: ArtisanColors.white,
+    borderRadius: 14,
+    borderWidth: 1,
+    borderColor: ArtisanColors.border,
+    padding: 16,
+  },
+  pricingTitle: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: ArtisanColors.muted,
+    textAlign: 'center',
+  },
+  pricingAmount: {
+    fontSize: 40,
+    fontWeight: '800',
+    color: ArtisanColors.primary,
+    textAlign: 'center',
+    marginVertical: 8,
+  },
+  pricingRow: {
+    flexDirection: 'row',
+    gap: 10,
+    marginBottom: 12,
+  },
+  pricingItem: {
+    flex: 1,
+    backgroundColor: ArtisanColors.background,
+    borderRadius: 10,
+    padding: 10,
+    alignItems: 'center',
+  },
+  pricingItemLabel: {
+    fontSize: 11,
+    color: ArtisanColors.muted,
+    marginBottom: 4,
+  },
+  pricingItemValue: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: ArtisanColors.dark,
+  },
+  competitorContainer: {
+    marginTop: 4,
+    marginBottom: 12,
+  },
+  competitorTitle: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: ArtisanColors.darkMedium,
+    marginBottom: 6,
+  },
+  competitorRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: 6,
+    borderBottomWidth: 1,
+    borderBottomColor: ArtisanColors.border,
+  },
+  competitorName: {
+    flex: 1,
+    fontSize: 12,
+    color: ArtisanColors.darkMedium,
+    marginRight: 10,
+  },
+  competitorPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: ArtisanColors.dark,
+  },
+  pricingReasoning: {
+    fontSize: 12,
+    color: ArtisanColors.muted,
+    lineHeight: 18,
+    marginBottom: 12,
   },
 
   // Continue

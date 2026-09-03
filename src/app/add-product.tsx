@@ -44,6 +44,8 @@ export default function AddProductScreen() {
   const [recordingDuration, setRecordingDuration] = useState(0);
   const [isGenerating, setIsGenerating] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [rawMaterialCost, setRawMaterialCost] = useState('');
+  const [makingCost, setMakingCost] = useState('');
 
   const recorder = useAudioRecorder(RecordingPresets.HIGH_QUALITY);
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
@@ -278,8 +280,14 @@ export default function AddProductScreen() {
         language: draft.voiceLanguage,
       });
 
+      const parsedMatCost = Number(rawMaterialCost) || 0;
+      const parsedMakingCost = Number(makingCost) || 0;
+
       const updatedDraft: ProductDraft = {
         ...draft,
+        rawMaterialCost: parsedMatCost,
+        makingCost: parsedMakingCost,
+        totalCost: parsedMatCost + parsedMakingCost,
         title: result.title,
         shortDescription: result.shortDescription,
         description: result.description,
@@ -557,16 +565,40 @@ export default function AddProductScreen() {
           )}
         </View>
 
-        {/* Cost (kept as-is for future) */}
+        {/* Cost */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Your Cost</Text>
           <View style={styles.costBox}>
             <Text style={styles.rupee}>₹</Text>
-            <View>
+            <View style={styles.costFields}>
               <Text style={styles.costTitle}>Raw material + making cost</Text>
               <Text style={styles.costSubtitle}>
                 We&apos;ll use this to suggest a suitable selling price.
               </Text>
+              <View style={styles.costInputs}>
+                <View style={styles.costInputWrap}>
+                  <Text style={styles.costInputLabel}>Material (₹)</Text>
+                  <TextInput
+                    style={styles.costInput}
+                    value={rawMaterialCost}
+                    onChangeText={setRawMaterialCost}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={ArtisanColors.muted}
+                  />
+                </View>
+                <View style={styles.costInputWrap}>
+                  <Text style={styles.costInputLabel}>Making (₹)</Text>
+                  <TextInput
+                    style={styles.costInput}
+                    value={makingCost}
+                    onChangeText={setMakingCost}
+                    keyboardType="numeric"
+                    placeholder="0"
+                    placeholderTextColor={ArtisanColors.muted}
+                  />
+                </View>
+              </View>
             </View>
           </View>
         </View>
@@ -1112,7 +1144,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     padding: 17,
     flexDirection: 'row',
-    alignItems: 'center',
+    alignItems: 'flex-start',
     borderWidth: 1,
     borderColor: ArtisanColors.border,
   },
@@ -1139,6 +1171,32 @@ const styles = StyleSheet.create({
     color: ArtisanColors.muted,
     lineHeight: 16,
     maxWidth: 260,
+  },
+  costFields: {
+    flex: 1,
+  },
+  costInputs: {
+    flexDirection: 'row',
+    gap: 10,
+    marginTop: 12,
+  },
+  costInputWrap: {
+    flex: 1,
+  },
+  costInputLabel: {
+    fontSize: 11,
+    color: ArtisanColors.muted,
+    marginBottom: 6,
+  },
+  costInput: {
+    backgroundColor: ArtisanColors.background,
+    borderWidth: 1,
+    borderColor: ArtisanColors.border,
+    borderRadius: 10,
+    paddingHorizontal: 12,
+    height: 42,
+    fontSize: 15,
+    color: ArtisanColors.dark,
   },
 
   // Continue Button
