@@ -32,6 +32,21 @@
           "image": "./assets/images/splash-icon.png",
           "imageWidth": 76
         }
+      ],
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow ArtisanAI to access your camera to take product photos.",
+          "photosPermission": "Allow ArtisanAI to access your photos to add product images.",
+          "microphonePermission": false
+        }
+      ],
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Allow ArtisanAI to access your microphone to record product descriptions.",
+          "recordAudioAndroid": true
+        }
       ]
     ],
     "experiments": {
