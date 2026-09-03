@@ -101,7 +101,7 @@ FINAL CHECK: Make sure the copy is confident, natural, SEO-optimised and honest.
  * Generate the product catalog.
  * When referenceContent is provided, it is fed to the model for enrichment.
  */
-export async function generateCatalog({ transcript, imageCount, referenceContent }) {
+export async function generateCatalog({ transcript, imageCount, referenceContent, visualNotes }) {
   const artisanText = (transcript || '').trim() ||
     '(The artisan did not provide a description. Use only what is clearly visible in the photos.)';
 
@@ -116,7 +116,15 @@ export async function generateCatalog({ transcript, imageCount, referenceContent
     referenceSection = `Real web search results for similar products (use these only to understand the category and typical features/language - do not blindly copy them):\n"""${blocks}"""\n\n`;
   }
 
-  const userPrompt = `${referenceSection}Artisan's short description of their product:
+  let visualSection = '';
+  if (visualNotes) {
+    visualSection = `Facts about the product clearly visible in the uploaded photo (from automatic image analysis - only state what is actually shown):
+"""${visualNotes}"""
+
+`;
+  }
+
+  const userPrompt = `${referenceSection}${visualSection}Artisan's short description of their product:
 """${artisanText}"""
 
 Number of product photos: ${imageCount}
