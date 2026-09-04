@@ -141,3 +141,76 @@ Please generate the product catalog as JSON following the instructions.`;
 
   return extractJson(content);
 }
+
+const PRICING_SYSTEM_PROMPT = `You are an expert e-commerce pricing analyst for handmade artisan products sold on Indian platforms (Amazon, Flipkart, Meesho, Etsy, and local marketplaces).
+
+You will be given the artisan's production costs (raw material + making cost) and a description of the product, plus real competitor price references found on the web for SIMILAR products. Your job is to suggest the best selling prices.
+
+Return valid JSON only with this exact shape:
+{
+  "suggestedRetailPrice": number,
+  "suggestedWholesalePrice": number,
+  "minRetailPrice": number,
+  "maxRetailPrice": number,
+  "currency": "INR",
+  "competitors": [
+    { "platform": "Amazon", "productName": "...", "price": number, "currency": "INR" }
+  ],
+  "reasoning": "Brief explanation of how the prices were derived from competitor references and costs."
+}
+
+RULES:
+- Use the REAL competitor prices provided as the primary market reference; base your suggestions on them, not on invented figures.
+- If production costs are provided, use them as a floor. Suggested retail price should typically be 2-3x total cost for handmade goods to account for labor, platform fees, and profit margin.
+- minRetailPrice should not be below total cost (or modestly at cost if none given).
+- Round prices to reasonable marketplace values (e.g. ending in 9 or 0).
+- Do not invent numbers out of thin air; ground every figure in the competitor references and costs provided.
+- Return ONLY the JSON, no extra text.`;
+
+/**
+ * Generate a product pricing suggestion.
+ * When competitorRefs are provided, they feed real marketplace prices into the model.
+ */
+export async function generatePricing({ transcript, rawMaterialCost, makingCost, imageCount, competitorRefs }) {
+  const costText =
+    rawMaterialCost != null && makingCost != null
+      ? `Raw material cost: INR ${rawMaterialCost}\nMaking cost: INR ${makingCost}\nTotal cost: INR ${Number(rawMaterialCost) + Number(makingCost)}`
+      : 'Production costs not provided. Estimate competitive prices based only on similar products.';
+
+  const artisanText =
+    (transcript || '').trim() ||
+    '(No description provided. Base pricing on the competitor references.)';
+
+  let referenceSection = '';
+  if (competitorRefs && competitorRefs.length > 0) {
+    const blocks = competitorRefs
+      .map(
+        (r, i) =>
+          `--- Source ${i + 1}: ${r.title} (${r.url}) ---\n${r.content || ''}`
+      )
+      .join('\n');
+    referenceSection = `Real web search references for similar products (use these prices/context to ground your suggestion):
+"""${blocks}"""
+`;
+  }
+
+  const userPrompt = `${referenceSection}
+Product description / artisan notes:
+"""${artisanText}"""
+
+${costText}
+
+Number of product photos: ${imageCount}
+
+Please suggest the best e-commerce selling prices as JSON.`;
+
+  const content = await groqChat(
+    [
+      { role: 'system', content: PRICING_SYSTEM_PROMPT },
+      { role: 'user', content: userPrompt },
+    ],
+    0.4
+  );
+
+  return extractJson(content);
+}

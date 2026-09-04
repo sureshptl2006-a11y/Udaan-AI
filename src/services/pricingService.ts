@@ -1,5 +1,5 @@
 import { ProductPricing } from '@/types/product';
-import { hasGroqKey } from './aiConfig';
+import { hasGroqKey, hasApiUrl, AI_CONFIG } from './aiConfig';
 import { generatePricingWithGroq } from './groqService';
 import type { ProductImage, VoiceLanguageCode } from '@/types/product';
 
@@ -66,9 +66,40 @@ class GroqPricingService implements PricingService {
   }
 }
 
-let pricingService: PricingService = hasGroqKey
-  ? new GroqPricingService()
-  : new MockPricingService();
+class BackendPricingService implements PricingService {
+  async generatePricing(params: PricingRequest): Promise<ProductPricing> {
+    const baseUrl = AI_CONFIG.apiUrl.replace(/\/$/, '');
+    const res = await fetch(`${baseUrl}/api/generate-pricing`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        transcript: params.transcript,
+        images: params.images,
+        language: params.language,
+        rawMaterialCost: params.rawMaterialCost,
+        makingCost: params.makingCost,
+      }),
+    });
+
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Server error ${res.status}: ${body.slice(0, 200)}`);
+    }
+
+    const data = (await res.json()) as { pricing?: ProductPricing };
+    if (!data.pricing) {
+      throw new Error('Server returned no pricing data');
+    }
+    return data.pricing;
+  }
+}
+
+// Priority: backend (real web-price search) > direct Groq > mock.
+let pricingService: PricingService = hasApiUrl
+  ? new BackendPricingService()
+  : hasGroqKey
+    ? new GroqPricingService()
+    : new MockPricingService();
 
 export function getPricingService(): PricingService {
   return pricingService;

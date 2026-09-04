@@ -31,12 +31,14 @@ import {
 } from '@/types/product';
 import { getSpeechToTextService } from '@/services/speechToTextService';
 import { getAICatalogService } from '@/services/aiCatalogService';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 const MAX_PHOTOS = 7;
 
 type RecordingState = 'idle' | 'recording' | 'processing' | 'transcribed' | 'error';
 
 export default function AddProductScreen() {
+  const { t, setLanguage, nativeLabel } = useTranslation();
   const [draft, setDraft] = useState<ProductDraft>(createEmptyDraft);
   const [showPhotoOptions, setShowPhotoOptions] = useState(false);
   const [showLanguagePicker, setShowLanguagePicker] = useState(false);
@@ -66,10 +68,7 @@ export default function AddProductScreen() {
   const requestCameraPermission = async (): Promise<boolean> => {
     const { status } = await ImagePicker.requestCameraPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
-        'Camera Permission Needed',
-        'ArtisanAI needs camera access to take product photos. Please enable it in your device settings.'
-      );
+      Alert.alert(t('cameraPermissionTitle'), t('cameraPermissionMsg'));
       return false;
     }
     return true;
@@ -78,10 +77,7 @@ export default function AddProductScreen() {
   const requestGalleryPermission = async (): Promise<boolean> => {
     const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (status !== 'granted') {
-      Alert.alert(
-        'Photo Permission Needed',
-        'ArtisanAI needs access to your photos to add product images. Please enable it in your device settings.'
-      );
+      Alert.alert(t('galleryPermissionTitle'), t('galleryPermissionMsg'));
       return false;
     }
     return true;
@@ -120,15 +116,15 @@ export default function AddProductScreen() {
 
       const remaining = MAX_PHOTOS - draft.images.length;
       if (remaining <= 0) {
-        Alert.alert('Maximum Photos', `You can add up to ${MAX_PHOTOS} photos.`);
+        Alert.alert(t('maxPhotosTitle'), t('maxPhotosMsg', { max: MAX_PHOTOS }));
         return;
       }
 
       const assets = result.assets.slice(0, remaining);
       if (result.assets.length > remaining) {
         Alert.alert(
-          'Photo Limit',
-          `Only ${remaining} more photo(s) can be added. You can add up to ${MAX_PHOTOS} photos total.`
+          t('photoLimitTitle'),
+          t('photoLimitMsg', { n: remaining, max: MAX_PHOTOS })
         );
       }
 
@@ -148,7 +144,7 @@ export default function AddProductScreen() {
     try {
       const remaining = MAX_PHOTOS - draft.images.length;
       if (remaining <= 0) {
-        Alert.alert('Maximum Photos', `You can add up to ${MAX_PHOTOS} photos.`);
+        Alert.alert(t('maxPhotosTitle'), t('maxPhotosMsg', { max: MAX_PHOTOS }));
         return;
       }
 
@@ -164,8 +160,8 @@ export default function AddProductScreen() {
       const assets = result.assets.slice(0, remaining);
       if (result.assets.length > remaining) {
         Alert.alert(
-          'Photo Limit',
-          `Only ${remaining} more photo(s) can be added. You can add up to ${MAX_PHOTOS} photos total.`
+          t('photoLimitTitle'),
+          t('photoLimitMsg', { n: remaining, max: MAX_PHOTOS })
         );
       }
 
@@ -184,10 +180,7 @@ export default function AddProductScreen() {
     try {
       const permission = await requestRecordingPermissionsAsync();
       if (!permission.granted) {
-        Alert.alert(
-          'Microphone Permission Needed',
-          'ArtisanAI needs microphone access to record your product description. Please enable it in your device settings.'
-        );
+        Alert.alert(t('micPermissionTitle'), t('micPermissionMsg'));
         setRecordingState('error');
         return;
       }
@@ -207,10 +200,7 @@ export default function AddProductScreen() {
         setRecordingDuration((prev) => prev + 1);
       }, 1000);
     } catch {
-      Alert.alert(
-        'Recording Error',
-        'Could not start recording. Please try again.'
-      );
+      Alert.alert(t('recordingErrorTitle'), t('recordingErrorMsg'));
       setRecordingState('error');
     }
   };
@@ -245,10 +235,7 @@ export default function AddProductScreen() {
       }));
       setRecordingState('transcribed');
     } catch {
-      Alert.alert(
-        'Recording Error',
-        'Could not save the recording. Please try again.'
-      );
+      Alert.alert(t('saveRecordingErrorTitle'), t('saveRecordingErrorMsg'));
       setRecordingState('error');
     }
   };
@@ -276,15 +263,19 @@ export default function AddProductScreen() {
     setInlineMessage(null);
 
     if (draft.images.length === 0) {
-      showInline('error', 'Please add at least one product photo to continue.', 'Add Photo');
+      showInline(
+        'error',
+        t('validatePhotoMsg'),
+        t('validatePhotoTitle')
+      );
       return;
     }
 
     if (!draft.transcript.trim()) {
       showInline(
         'error',
-        'Please tell us about your product by recording a voice description.',
-        'Add Description'
+        t('validateDescMsg'),
+        t('validateDescTitle')
       );
       return;
     }
@@ -328,8 +319,8 @@ export default function AddProductScreen() {
         err instanceof Error ? err.message : 'Please try again.';
       showInline(
         'error',
-        `Could not generate the product description. ${reason}`,
-        'Generation Error'
+        `${t('generationErrorTitle')}: ${reason}`,
+        t('generationErrorTitle')
       );
     } finally {
       setIsGenerating(false);
@@ -344,6 +335,7 @@ export default function AddProductScreen() {
 
   const handleSelectLanguage = (code: VoiceLanguageCode) => {
     setDraft((prev) => ({ ...prev, voiceLanguage: code }));
+    setLanguage(code);
     setShowLanguagePicker(false);
   };
 
@@ -352,15 +344,15 @@ export default function AddProductScreen() {
   const getRecordingLabel = (): string => {
     switch (recordingState) {
       case 'recording':
-        return `Listening... ${formatDuration(recordingDuration)}`;
+        return t('listening', { time: formatDuration(recordingDuration) });
       case 'processing':
-        return 'Transcribing...';
+        return t('transcribing');
       case 'transcribed':
-        return 'Tap to re-record';
+        return t('tapToRerecord');
       case 'error':
-        return 'Tap to try again';
+        return t('tapToTryAgain');
       default:
-        return 'Tap to speak';
+        return t('tapToSpeak');
     }
   };
 
@@ -381,7 +373,7 @@ export default function AddProductScreen() {
           >
             <Text style={styles.backIcon}>‹</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>Add New Product</Text>
+          <Text style={styles.headerTitle}>{t('addHeaderTitle')}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -391,50 +383,49 @@ export default function AddProductScreen() {
             <View style={[styles.stepCircle, styles.activeStep]}>
               <Text style={styles.activeStepText}>1</Text>
             </View>
-            <Text style={styles.activeStepLabel}>Product</Text>
+            <Text style={styles.activeStepLabel}>{t('stepProduct')}</Text>
           </View>
           <View style={styles.stepLine} />
           <View style={styles.stepItem}>
             <View style={styles.stepCircle}>
               <Text style={styles.stepText}>2</Text>
             </View>
-            <Text style={styles.stepLabel}>AI Catalog</Text>
+            <Text style={styles.stepLabel}>{t('stepAI')}</Text>
           </View>
           <View style={styles.stepLine} />
           <View style={styles.stepItem}>
             <View style={styles.stepCircle}>
               <Text style={styles.stepText}>3</Text>
             </View>
-            <Text style={styles.stepLabel}>Pricing</Text>
+            <Text style={styles.stepLabel}>{t('stepPricing')}</Text>
           </View>
         </View>
 
         {/* Introduction */}
         <View style={styles.introduction}>
-          <Text style={styles.title}>Let&apos;s add your product</Text>
+          <Text style={styles.title}>{t('introTitle')}</Text>
           <Text style={styles.subtitle}>
-            Take a photo and tell us about your handmade product. Our AI will
-            do the rest.
+            {t('introSubtitle')}
           </Text>
         </View>
 
         {/* Product Photos */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Product Photo</Text>
+          <Text style={styles.sectionTitle}>{t('productPhotoSection')}</Text>
 
           {hasPhotos ? (
             <View>
               {/* Photo counter */}
               <View style={styles.photoCounterRow}>
                 <Text style={styles.photoCounter}>
-                  {draft.images.length} / {MAX_PHOTOS} photos
+                  {t('photoCount', { count: draft.images.length, max: MAX_PHOTOS })}
                 </Text>
                 {draft.images.length < MAX_PHOTOS && (
                   <Pressable
                     style={styles.addMoreButton}
                     onPress={() => setShowPhotoOptions(true)}
                   >
-                    <Text style={styles.addMoreText}>+ Add more</Text>
+                    <Text style={styles.addMoreText}>{t('addMore')}</Text>
                   </Pressable>
                 )}
               </View>
@@ -449,7 +440,7 @@ export default function AddProductScreen() {
                     />
                     {index === 0 && (
                       <View style={styles.coverBadge}>
-                        <Text style={styles.coverBadgeText}>Cover</Text>
+                        <Text style={styles.coverBadgeText}>{t('cover')}</Text>
                       </View>
                     )}
                     <Pressable
@@ -468,7 +459,7 @@ export default function AddProductScreen() {
                   onPress={() => setShowPhotoOptions(true)}
                 >
                   <Text style={styles.addMoreCardIcon}>+</Text>
-                  <Text style={styles.addMoreCardText}>Add Photo</Text>
+                  <Text style={styles.addMoreCardText}>{t('addPhoto')}</Text>
                 </Pressable>
               )}
             </View>
@@ -480,9 +471,9 @@ export default function AddProductScreen() {
               <View style={styles.photoIconCircle}>
                 <Text style={styles.photoIcon}>📷</Text>
               </View>
-              <Text style={styles.photoTitle}>Add Product Photo</Text>
+              <Text style={styles.photoTitle}>{t('addProductPhotoModal')}</Text>
               <Text style={styles.photoSubtitle}>
-                Take a new photo or choose one from your gallery
+                {t('photoSubtitle')}
               </Text>
             </Pressable>
           )}
@@ -490,14 +481,14 @@ export default function AddProductScreen() {
 
         {/* Voice Description */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tell us about your product</Text>
+          <Text style={styles.sectionTitle}>{t('tellUsTitle')}</Text>
 
           {/* Language selector */}
           <Pressable
             style={styles.languageSelector}
             onPress={() => setShowLanguagePicker(true)}
           >
-            <Text style={styles.languageLabel}>Language:</Text>
+            <Text style={styles.languageLabel}>{t('languageLabel')}</Text>
             <Text style={styles.languageValue}>
               {currentLanguage?.nativeLabel} ({currentLanguage?.label})
             </Text>
@@ -550,15 +541,17 @@ export default function AddProductScreen() {
                 recordingState !== 'processing' && (
                   <Text style={styles.voiceSubtitle}>
                     {recordingState === 'transcribed'
-                      ? 'Your description has been recorded. Tap to record again.'
-                      : 'Tell us the product name, material, size, design and anything else you want buyers to know.'}
+                      ? t('voiceSubtitleRecorded')
+                      : t('voiceSubtitleIdle')}
                   </Text>
                 )}
               {recordingState === 'recording' && (
                 <View style={styles.recordingIndicator}>
                   <View style={styles.recordingDot} />
                   <Text style={styles.recordingTime}>
-                    Recording in {currentLanguage?.label || 'selected language'}
+                    {t('recordingIn', {
+                      lang: currentLanguage?.label || nativeLabel,
+                    })}
                   </Text>
                 </View>
               )}
@@ -578,13 +571,13 @@ export default function AddProductScreen() {
             onPress={() => setShowManualInput((prev) => !prev)}
           >
             <Text style={styles.typeInsteadText}>
-              {showManualInput ? 'Hide typed description' : '✍️ Type a description instead'}
+              {showManualInput ? t('hideTyped') : t('typeInstead')}
             </Text>
           </Pressable>
 
           {showManualInput && (
             <View style={styles.transcriptContainer}>
-              <Text style={styles.transcriptLabel}>Your description:</Text>
+              <Text style={styles.transcriptLabel}>{t('yourDescription')}</Text>
               <TextInput
                 style={styles.transcriptInput}
                 value={draft.transcript}
@@ -593,7 +586,7 @@ export default function AddProductScreen() {
                 }
                 multiline
                 textAlignVertical="top"
-                placeholder="Describe your product. For example: a hand-woven cotton tote bag with green and gold embroidery, about 40cm wide, a small inner pocket, and long comfortable handles."
+                placeholder={t('describePlaceholder')}
                 placeholderTextColor={ArtisanColors.muted}
               />
             </View>
@@ -602,7 +595,7 @@ export default function AddProductScreen() {
           {/* Transcribed text */}
           {hasTranscript && !showManualInput && (
             <View style={styles.transcriptContainer}>
-              <Text style={styles.transcriptLabel}>Your description:</Text>
+              <Text style={styles.transcriptLabel}>{t('yourDescription')}</Text>
               <TextInput
                 style={styles.transcriptInput}
                 value={draft.transcript}
@@ -611,7 +604,7 @@ export default function AddProductScreen() {
                 }
                 multiline
                 textAlignVertical="top"
-                placeholder="Edit your description if needed..."
+                placeholder={t('editPlaceholder')}
                 placeholderTextColor={ArtisanColors.muted}
               />
             </View>
@@ -620,17 +613,17 @@ export default function AddProductScreen() {
 
         {/* Cost */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Cost</Text>
+          <Text style={styles.sectionTitle}>{t('costTitle')}</Text>
           <View style={styles.costBox}>
             <Text style={styles.rupee}>₹</Text>
             <View style={styles.costFields}>
-              <Text style={styles.costTitle}>Raw material + making cost</Text>
+              <Text style={styles.costTitle}>{t('rawMakingTitle')}</Text>
               <Text style={styles.costSubtitle}>
-                We&apos;ll use this to suggest a suitable selling price.
+                {t('costSubtitle')}
               </Text>
               <View style={styles.costInputs}>
                 <View style={styles.costInputWrap}>
-                  <Text style={styles.costInputLabel}>Material (₹)</Text>
+                  <Text style={styles.costInputLabel}>{t('materialLabel')}</Text>
                   <TextInput
                     style={styles.costInput}
                     value={rawMaterialCost}
@@ -641,7 +634,7 @@ export default function AddProductScreen() {
                   />
                 </View>
                 <View style={styles.costInputWrap}>
-                  <Text style={styles.costInputLabel}>Making (₹)</Text>
+                  <Text style={styles.costInputLabel}>{t('makingLabel')}</Text>
                   <TextInput
                     style={styles.costInput}
                     value={makingCost}
@@ -683,20 +676,19 @@ export default function AddProductScreen() {
             <View style={styles.loadingRow}>
               <ActivityIndicator size="small" color={ArtisanColors.white} />
               <Text style={styles.continueText}>
-                AI is creating your listing...
+                {t('aiCreating')}
               </Text>
             </View>
           ) : (
             <>
-              <Text style={styles.continueText}>Continue with AI</Text>
+              <Text style={styles.continueText}>{t('continueAI')}</Text>
               <Text style={styles.continueArrow}>→</Text>
             </>
           )}
         </Pressable>
 
         <Text style={styles.helperText}>
-          AI will enhance your photo, create your product description, and
-          suggest a competitive price.
+          {t('helperTextAdd')}
         </Text>
 
         <View style={{ height: 30 }} />
@@ -717,9 +709,9 @@ export default function AddProductScreen() {
             style={styles.modalContent}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={styles.modalTitle}>Add Product Photo</Text>
+            <Text style={styles.modalTitle}>{t('addProductPhotoModal')}</Text>
             <Text style={styles.modalSubtitle}>
-              Choose how you&apos;d like to add a photo
+              {t('chooseHowToAdd')}
             </Text>
 
             <Pressable
@@ -728,9 +720,9 @@ export default function AddProductScreen() {
             >
               <Text style={styles.modalOptionIcon}>📷</Text>
               <View style={styles.modalOptionText}>
-                <Text style={styles.modalOptionTitle}>Take Photo</Text>
+                <Text style={styles.modalOptionTitle}>{t('takePhoto')}</Text>
                 <Text style={styles.modalOptionDesc}>
-                  Use your camera to take a new photo
+                  {t('takePhotoDesc')}
                 </Text>
               </View>
             </Pressable>
@@ -741,9 +733,9 @@ export default function AddProductScreen() {
             >
               <Text style={styles.modalOptionIcon}>🖼️</Text>
               <View style={styles.modalOptionText}>
-                <Text style={styles.modalOptionTitle}>Choose from Gallery</Text>
+                <Text style={styles.modalOptionTitle}>{t('chooseGallery')}</Text>
                 <Text style={styles.modalOptionDesc}>
-                  Select existing photos from your device
+                  {t('chooseGalleryDesc')}
                 </Text>
               </View>
             </Pressable>
@@ -752,7 +744,7 @@ export default function AddProductScreen() {
               style={styles.modalCancelButton}
               onPress={() => setShowPhotoOptions(false)}
             >
-              <Text style={styles.modalCancelText}>Cancel</Text>
+              <Text style={styles.modalCancelText}>{t('cancel')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>
@@ -773,9 +765,9 @@ export default function AddProductScreen() {
             style={styles.modalContent}
             onPress={(e) => e.stopPropagation()}
           >
-            <Text style={styles.modalTitle}>Select Language</Text>
+            <Text style={styles.modalTitle}>{t('selectLanguageTitle')}</Text>
             <Text style={styles.modalSubtitle}>
-              Choose the language you&apos;ll speak in
+              {t('selectLanguageSub')}
             </Text>
 
             <FlatList
@@ -816,7 +808,7 @@ export default function AddProductScreen() {
               style={styles.modalCancelButton}
               onPress={() => setShowLanguagePicker(false)}
             >
-              <Text style={styles.modalCancelText}>Cancel</Text>
+              <Text style={styles.modalCancelText}>{t('cancel')}</Text>
             </Pressable>
           </Pressable>
         </Pressable>

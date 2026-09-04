@@ -74,3 +74,11 @@ export function buildSearchQuery(transcript) {
   const words = cleaned.split(' ').slice(0, 12).join(' ');
   return `${words} benefits price features reviews`;
 }
+
+/** Build a query that tries to surface real prices of the same product. */
+export function buildPricingSearchQuery(transcript) {
+  const cleaned = (transcript || '').replace(/\s+/g, ' ').trim();
+  if (!cleaned) return 'handmade artisan product price';
+  const words = cleaned.split(' ').slice(0, 10).join(' ');
+  return `${words} price buy online`;
+}

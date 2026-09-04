@@ -18,8 +18,11 @@ import { ProductDraft, ProductPricing } from '@/types/product';
 import { hasGeminiKey } from '@/services/aiConfig';
 import { generateProductImageWithGemini } from '@/services/geminiService';
 import { getPricingService } from '@/services/pricingService';
+import * as Clipboard from 'expo-clipboard';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function AICatalogScreen() {
+  const { t } = useTranslation();
   const params = useLocalSearchParams<{ draft: string }>();
 
   const [draft, setDraft] = useState<ProductDraft>(() => {
@@ -49,6 +52,7 @@ export default function AICatalogScreen() {
   const [pricing, setPricing] = useState<ProductPricing | null>(null);
   const [isGeneratingImage, setIsGeneratingImage] = useState(false);
   const [isGeneratingPricing, setIsGeneratingPricing] = useState(false);
+  const [showAdvanced, setShowAdvanced] = useState(false);
   const [inlineMessage, setInlineMessage] = useState<{
     type: 'error' | 'success';
     text: string;
@@ -65,11 +69,32 @@ export default function AICatalogScreen() {
     }
   };
 
+  const handleCopyListing = async () => {
+    const features =
+      draft.keyFeatures.length > 0
+        ? `\n\n${t('keyFeatures')}:\n` + draft.keyFeatures.map((f) => `• ${f}`).join('\n')
+        : '';
+    const ideal =
+      draft.idealFor.length > 0
+        ? `\n\n${t('idealFor')}:\n` + draft.idealFor.map((i) => `• ${i}`).join('\n')
+        : '';
+    const text = [
+      draft.title,
+      '',
+      draft.shortDescription,
+      '',
+      draft.description,
+      features,
+      ideal,
+    ]
+      .filter(Boolean)
+      .join('\n');
+    await Clipboard.setStringAsync(text);
+    showInline('success', t('copiedSuccess'));
+  };
+
   const handleContinue = () => {
-    Alert.alert(
-      'Coming Soon',
-      'The Pricing step will be available in the next update.'
-    );
+    Alert.alert(t('continueToPricing'), t('catalogHelperText'));
   };
 
   const handleGenerateImage = async () => {
@@ -85,8 +110,8 @@ export default function AICatalogScreen() {
     if (!draft.title && !draft.description) {
       showInline(
         'error',
-        'Please review the title and description before generating an image.',
-        'Need Information'
+        t('needInfoMsg'),
+        t('needInfoTitle')
       );
       return;
     }
@@ -99,12 +124,12 @@ export default function AICatalogScreen() {
         productDescription: draft.description,
       });
       setDraft((prev) => ({ ...prev, generatedImage: result.base64Image }));
-      showInline('success', 'Product image generated successfully.');
+      showInline('success', t('imageGeneratedSuccess'));
     } catch {
       showInline(
         'error',
-        'Could not generate the image. Please try again later. The Gemini free tier has no image quota — enable billing at aistudio.google.com.',
-        'Image Generation Failed'
+        t('imageFailedMsg'),
+        t('imageFailedTitle')
       );
     } finally {
       setIsGeneratingImage(false);
@@ -124,12 +149,12 @@ export default function AICatalogScreen() {
         makingCost: draft.makingCost,
       });
       setPricing(result);
-      showInline('success', 'Pricing suggestions generated.');
+      showInline('success', t('pricingGenerated'));
     } catch {
       showInline(
         'error',
-        'Could not generate pricing suggestions. Please try again.',
-        'Pricing Failed'
+        t('pricingFailedMsg'),
+        t('pricingFailedTitle')
       );
     } finally {
       setIsGeneratingPricing(false);
@@ -150,7 +175,7 @@ export default function AICatalogScreen() {
           >
             <Text style={styles.backIcon}>‹</Text>
           </Pressable>
-          <Text style={styles.headerTitle}>AI Product Catalog</Text>
+          <Text style={styles.headerTitle}>{t('aiHeaderTitle')}</Text>
           <View style={styles.headerSpacer} />
         </View>
 
@@ -160,27 +185,26 @@ export default function AICatalogScreen() {
             <View style={styles.stepCircle}>
               <Text style={styles.stepText}>1</Text>
             </View>
-            <Text style={styles.stepLabel}>Product</Text>
+            <Text style={styles.stepLabel}>{t('stepProduct')}</Text>
           </View>
           <View style={styles.stepLine} />
           <View style={styles.stepItem}>
             <View style={[styles.stepCircle, styles.activeStep]}>
               <Text style={styles.activeStepText}>2</Text>
             </View>
-            <Text style={styles.activeStepLabel}>AI Catalog</Text>
+            <Text style={styles.activeStepLabel}>{t('stepAI')}</Text>
           </View>
           <View style={styles.stepLine} />
           <View style={styles.stepItem}>
             <View style={styles.stepCircle}>
               <Text style={styles.stepText}>3</Text>
             </View>
-            <Text style={styles.stepLabel}>Pricing</Text>
+            <Text style={styles.stepLabel}>{t('stepPricing')}</Text>
           </View>
         </View>
 
         <Text style={styles.introText}>
-          Review your AI-generated product listing. You can edit anything below
-          before continuing.
+          {t('catalogIntro')}
         </Text>
 
         {/* Inline feedback (works on web where Alert.alert is a no-op) */}
@@ -197,10 +221,18 @@ export default function AICatalogScreen() {
           </View>
         ) : null}
 
+        {/* Copy Listing */}
+        <Pressable
+          style={styles.copyButton}
+          onPress={handleCopyListing}
+        >
+          <Text style={styles.copyButtonText}>{t('copyListing')}</Text>
+        </Pressable>
+
         {/* Product Photos Preview */}
         {draft.images.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Product Photos</Text>
+            <Text style={styles.sectionTitle}>{t('productPhotos')}</Text>
             <FlatList
               horizontal
               data={draft.images}
@@ -215,7 +247,7 @@ export default function AICatalogScreen() {
                   />
                   {index === 0 && (
                     <View style={styles.coverBadge}>
-                      <Text style={styles.coverBadgeText}>Cover</Text>
+                      <Text style={styles.coverBadgeText}>{t('cover')}</Text>
                     </View>
                   )}
                 </View>
@@ -226,7 +258,7 @@ export default function AICatalogScreen() {
 
         {/* Category */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Category</Text>
+          <Text style={styles.sectionTitle}>{t('category')}</Text>
           <View style={styles.fieldCard}>
             <TextInput
               style={styles.fieldInput}
@@ -234,7 +266,7 @@ export default function AICatalogScreen() {
               onChangeText={(text) =>
                 setDraft((prev) => ({ ...prev, category: text }))
               }
-              placeholder="Product category"
+              placeholder={t('categoryPlaceholder')}
               placeholderTextColor={ArtisanColors.muted}
             />
           </View>
@@ -242,7 +274,7 @@ export default function AICatalogScreen() {
 
         {/* Title */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Product Title</Text>
+          <Text style={styles.sectionTitle}>{t('productTitle')}</Text>
           <View style={styles.fieldCard}>
             <TextInput
               style={styles.fieldInput}
@@ -250,7 +282,7 @@ export default function AICatalogScreen() {
               onChangeText={(text) =>
                 setDraft((prev) => ({ ...prev, title: text }))
               }
-              placeholder="Product title"
+              placeholder={t('titlePlaceholder')}
               placeholderTextColor={ArtisanColors.muted}
             />
           </View>
@@ -258,7 +290,7 @@ export default function AICatalogScreen() {
 
         {/* Short Description */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Short Description</Text>
+          <Text style={styles.sectionTitle}>{t('shortDesc')}</Text>
           <View style={styles.fieldCard}>
             <TextInput
               style={[styles.fieldInput, styles.fieldInputMultiline]}
@@ -268,7 +300,7 @@ export default function AICatalogScreen() {
               }
               multiline
               textAlignVertical="top"
-              placeholder="Brief product summary"
+              placeholder={t('shortDescPlaceholder')}
               placeholderTextColor={ArtisanColors.muted}
             />
           </View>
@@ -276,7 +308,7 @@ export default function AICatalogScreen() {
 
         {/* Detailed Description */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Detailed Description</Text>
+          <Text style={styles.sectionTitle}>{t('detailDesc')}</Text>
           <View style={styles.fieldCard}>
             <TextInput
               style={[styles.fieldInput, styles.fieldInputLarge]}
@@ -286,7 +318,7 @@ export default function AICatalogScreen() {
               }
               multiline
               textAlignVertical="top"
-              placeholder="Full product description"
+              placeholder={t('detailDescPlaceholder')}
               placeholderTextColor={ArtisanColors.muted}
             />
           </View>
@@ -294,7 +326,7 @@ export default function AICatalogScreen() {
 
         {/* Key Features */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Key Features</Text>
+          <Text style={styles.sectionTitle}>{t('keyFeatures')}</Text>
           <View style={styles.fieldCard}>
             {draft.keyFeatures.length > 0 ? (
               draft.keyFeatures.map((feature, i) => (
@@ -305,7 +337,7 @@ export default function AICatalogScreen() {
               ))
             ) : (
               <Text style={styles.sectionHint}>
-                No key features available.
+                {t('noKeyFeatures')}
               </Text>
             )}
           </View>
@@ -313,7 +345,7 @@ export default function AICatalogScreen() {
 
         {/* Ideal For / Use Cases */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Ideal For / Use Cases</Text>
+          <Text style={styles.sectionTitle}>{t('idealFor')}</Text>
           <View style={styles.tagsContainer}>
             {draft.idealFor.length > 0 ? (
               draft.idealFor.map((item, i) => (
@@ -322,14 +354,27 @@ export default function AICatalogScreen() {
                 </View>
               ))
             ) : (
-              <Text style={styles.sectionHint}>No use cases available.</Text>
+              <Text style={styles.sectionHint}>{t('noUseCases')}</Text>
             )}
           </View>
         </View>
 
+        {/* Advanced SEO (collapsed by default) */}
+        <Pressable
+          style={styles.advancedToggle}
+          onPress={() => setShowAdvanced((prev) => !prev)}
+        >
+          <Text style={styles.advancedToggleText}>{t('advancedSeo')}</Text>
+          <Text style={styles.advancedToggleHint}>
+            {showAdvanced ? t('hideAdvanced') : t('showAdvanced')}
+          </Text>
+        </Pressable>
+
+        {showAdvanced && (
+          <>
         {/* SEO Keywords */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>SEO Keywords</Text>
+          <Text style={styles.sectionTitle}>{t('seoKeywords')}</Text>
           <View style={styles.tagsContainer}>
             {draft.seoKeywords.map((keyword, i) => (
               <View key={`kw-${i}`} style={styles.tag}>
@@ -341,7 +386,7 @@ export default function AICatalogScreen() {
 
         {/* Tags */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Tags</Text>
+          <Text style={styles.sectionTitle}>{t('tags')}</Text>
           <View style={styles.tagsContainer}>
             {draft.tags.map((tag, i) => (
               <View key={`tag-${i}`} style={styles.tagAlt}>
@@ -353,7 +398,7 @@ export default function AICatalogScreen() {
 
         {/* Meta Title & Meta Description */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Meta Title</Text>
+          <Text style={styles.sectionTitle}>{t('metaTitle')}</Text>
           <View style={styles.fieldCard}>
             <TextInput
               style={styles.fieldInput}
@@ -361,17 +406,17 @@ export default function AICatalogScreen() {
               onChangeText={(text) =>
                 setDraft((prev) => ({ ...prev, metaTitle: text }))
               }
-              placeholder="SEO meta title (50-60 characters)"
+              placeholder={t('metaTitlePlaceholder')}
               placeholderTextColor={ArtisanColors.muted}
             />
           </View>
           <Text style={styles.sectionHint}>
-            {draft.metaTitle.length}/60 characters
+            {draft.metaTitle.length}/60
           </Text>
         </View>
 
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Meta Description</Text>
+          <Text style={styles.sectionTitle}>{t('metaDesc')}</Text>
           <View style={styles.fieldCard}>
             <TextInput
               style={[styles.fieldInput, styles.fieldInputLarge]}
@@ -381,18 +426,20 @@ export default function AICatalogScreen() {
               }
               multiline
               textAlignVertical="top"
-              placeholder="SEO meta description (140-160 characters)"
+              placeholder={t('metaDescPlaceholder')}
               placeholderTextColor={ArtisanColors.muted}
             />
           </View>
           <Text style={styles.sectionHint}>
-            {draft.metaDescription.length}/160 characters
+            {draft.metaDescription.length}/160
           </Text>
         </View>
+          </>
+        )}
 
         {/* Voice Transcript */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Your Voice Description</Text>
+          <Text style={styles.sectionTitle}>{t('yourVoiceDesc')}</Text>
           <View style={styles.transcriptCard}>
             <Text style={styles.transcriptText}>{draft.transcript}</Text>
           </View>
@@ -400,10 +447,9 @@ export default function AICatalogScreen() {
 
         {/* AI Image Generation */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>AI Product Image</Text>
+          <Text style={styles.sectionTitle}>{t('aiProductImage')}</Text>
           <Text style={styles.sectionHint}>
-            Use Gemini to create a professional e-commerce product image from
-            your photos.
+            {t('imageHint')}
           </Text>
 
           {draft.generatedImage ? (
@@ -422,7 +468,7 @@ export default function AICatalogScreen() {
                   <ActivityIndicator size="small" color={ArtisanColors.primary} />
                 ) : (
                   <Text style={styles.regenerateText}>
-                    Regenerate Image
+                    {t('regenerateImage')}
                   </Text>
                 )}
               </Pressable>
@@ -436,10 +482,10 @@ export default function AICatalogScreen() {
               {isGeneratingImage ? (
                 <View style={styles.loadingRow}>
                   <ActivityIndicator size="small" color={ArtisanColors.primary} />
-                  <Text style={styles.regenerateText}>Creating image...</Text>
+                  <Text style={styles.regenerateText}>{t('creatingImage')}</Text>
                 </View>
               ) : (
-                <Text style={styles.regenerateText}>🎨 Generate Product Image</Text>
+                <Text style={styles.regenerateText}>{t('generateProductImage')}</Text>
               )}
             </Pressable>
           )}
@@ -447,27 +493,26 @@ export default function AICatalogScreen() {
 
         {/* AI Pricing */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>AI Price Suggestion</Text>
+          <Text style={styles.sectionTitle}>{t('aiPrice')}</Text>
           <Text style={styles.sectionHint}>
-            Compare with competitor prices for similar products to find the best
-            selling price.
+            {t('priceHint')}
           </Text>
 
           {pricing ? (
             <View style={styles.pricingCard}>
-              <Text style={styles.pricingTitle}>Suggested Retail Price</Text>
+              <Text style={styles.pricingTitle}>{t('suggestedRetail')}</Text>
               <Text style={styles.pricingAmount}>
                 ₹{pricing.suggestedRetailPrice}
               </Text>
               <View style={styles.pricingRow}>
                 <View style={styles.pricingItem}>
-                  <Text style={styles.pricingItemLabel}>Wholesale</Text>
+                  <Text style={styles.pricingItemLabel}>{t('wholesale')}</Text>
                   <Text style={styles.pricingItemValue}>
                     ₹{pricing.suggestedWholesalePrice}
                   </Text>
                 </View>
                 <View style={styles.pricingItem}>
-                  <Text style={styles.pricingItemLabel}>Range</Text>
+                  <Text style={styles.pricingItemLabel}>{t('range')}</Text>
                   <Text style={styles.pricingItemValue}>
                     ₹{pricing.minRetailPrice} – ₹{pricing.maxRetailPrice}
                   </Text>
@@ -477,7 +522,7 @@ export default function AICatalogScreen() {
               {pricing.competitors.length > 0 && (
                 <View style={styles.competitorContainer}>
                   <Text style={styles.competitorTitle}>
-                    Competitor Reference
+                    {t('competitorRef')}
                   </Text>
                   {pricing.competitors.map((c, i) => (
                     <View key={`comp-${i}`} style={styles.competitorRow}>
@@ -502,9 +547,9 @@ export default function AICatalogScreen() {
                 disabled={isGeneratingPricing}
               >
                 {isGeneratingPricing ? (
-                  <Text style={styles.regenerateText}>Analyzing prices...</Text>
+                  <Text style={styles.regenerateText}>{t('analyzingPrices')}</Text>
                 ) : (
-                  <Text style={styles.regenerateText}>⟳ Refresh Price</Text>
+                  <Text style={styles.regenerateText}>{t('refreshPrice')}</Text>
                 )}
               </Pressable>
             </View>
@@ -518,12 +563,12 @@ export default function AICatalogScreen() {
                 <View style={styles.loadingRow}>
                   <ActivityIndicator size="small" color={ArtisanColors.primary} />
                   <Text style={styles.regenerateText}>
-                    Comparing competitor prices...
+                    {t('comparingPrices')}
                   </Text>
                 </View>
               ) : (
                 <Text style={styles.regenerateText}>
-                  💰 Suggest Best Selling Price
+                  {t('suggestBestPrice')}
                 </Text>
               )}
             </Pressable>
@@ -532,12 +577,12 @@ export default function AICatalogScreen() {
 
         {/* Continue Button */}
         <Pressable style={styles.continueButton} onPress={handleContinue}>
-          <Text style={styles.continueText}>Continue to Pricing</Text>
+          <Text style={styles.continueText}>{t('continueToPricing')}</Text>
           <Text style={styles.continueArrow}>→</Text>
         </Pressable>
 
         <Text style={styles.helperText}>
-          You can go back and make changes, or continue to set your pricing.
+          {t('catalogHelperText')}
         </Text>
 
         <View style={{ height: 30 }} />
@@ -664,6 +709,45 @@ const styles = StyleSheet.create({
     fontWeight: '500',
     lineHeight: 19,
     color: ArtisanColors.dark,
+  },
+
+  // Copy Listing
+  copyButton: {
+    backgroundColor: ArtisanColors.primary,
+    borderRadius: 14,
+    height: 48,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: 22,
+  },
+  copyButtonText: {
+    color: ArtisanColors.white,
+    fontSize: 14,
+    fontWeight: '700',
+  },
+
+  // Advanced SEO toggle
+  advancedToggle: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: ArtisanColors.iconBg,
+    borderRadius: 14,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    marginBottom: 22,
+    borderWidth: 1,
+    borderColor: ArtisanColors.border,
+  },
+  advancedToggleText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: ArtisanColors.darkMedium,
+  },
+  advancedToggleHint: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: ArtisanColors.primary,
   },
 
   // Sections

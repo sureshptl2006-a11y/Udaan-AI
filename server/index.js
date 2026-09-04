@@ -1,8 +1,8 @@
 import 'dotenv/config';
 import express from 'express';
 import cors from 'cors';
-import { searchWeb, buildSearchQuery } from './services/searchService.js';
-import { generateCatalog } from './services/groqService.js';
+import { searchWeb, buildSearchQuery, buildPricingSearchQuery } from './services/searchService.js';
+import { generateCatalog, generatePricing } from './services/groqService.js';
 import { analyzeProductImage } from './services/visionService.js';
 
 const app = express();
@@ -90,6 +90,132 @@ app.post('/api/generate-description', async (req, res) => {
     res.status(500).json({ error: err.message || 'Server error' });
   }
 });
+
+/**
+ * POST /api/generate-pricing
+ * Body: {
+ *   transcript: string,
+ *   images?: Array<{ uri?: string }>,
+ *   language?: string,
+ *   rawMaterialCost?: number,
+ *   makingCost?: number
+ * }
+ *
+ * 1. Searches the web for the same product's real prices on other sites (Tavily)
+ * 2. Feeds those real competitor prices + production costs into Groq
+ * 3. Returns a structured ProductPricing suggestion
+ * Falls back to a cost-based heuristic if search/LLM fail so the app always gets a useful reply.
+ */
+function fallbackPricing({ transcript, rawMaterialCost, makingCost }) {
+  const raw = Number(rawMaterialCost) || 0;
+  const make = Number(makingCost) || 0;
+  const totalCost = raw + make;
+
+  return {
+    rawMaterialCost: raw,
+    makingCost: make,
+    totalCost,
+    suggestedRetailPrice: totalCost > 0 ? Math.round(totalCost * 2.5) : 499,
+    suggestedWholesalePrice: totalCost > 0 ? Math.round(totalCost * 1.8) : 350,
+    minRetailPrice: totalCost > 0 ? totalCost : 299,
+    maxRetailPrice: totalCost > 0 ? Math.round(totalCost * 4) : 999,
+    currency: 'INR',
+    confidence: 'low',
+    competitors: [],
+    reasoning:
+      'Real competitor prices were unavailable, so this is a cost-based estimate. Connect pricing source or retry.',
+  };
+}
+
+app.post('/api/generate-pricing', async (req, res) => {
+  try {
+    const {
+      transcript = '',
+      images = [],
+      language = 'en-US',
+      rawMaterialCost,
+      makingCost,
+    } = req.body || {};
+
+    const raw = Number(rawMaterialCost) || 0;
+    const make = Number(makingCost) || 0;
+    const totalCost = raw + make;
+
+    // Step 1: search the web for real prices of the same product
+    let competitorRefs = [];
+    let searchInfo = { sourceCount: 0 };
+    try {
+      const query = buildPricingSearchQuery(transcript);
+      const searchResult = await searchWeb(query, 5);
+      competitorRefs = searchResult.results || [];
+      searchInfo = {
+        query,
+        answer: searchResult.answer?.slice(0, 300) || '',
+        sourceCount: competitorRefs.length,
+        sources: competitorRefs.map((r) => ({ title: r.title, url: r.url })),
+      };
+    } catch (err) {
+      console.warn('Pricing web search failed (continuing without references):', err.message);
+      searchInfo = { error: err.message, sourceCount: 0, sources: [] };
+    }
+
+    // Step 2: generate the pricing suggestion with Groq, grounded by real competitor prices
+    let pricing;
+    let confidence = 'medium';
+    try {
+      pricing = await generatePricing({
+        transcript,
+        rawMaterialCost,
+        makingCost,
+        imageCount: Array.isArray(images) ? images.length : 0,
+        competitorRefs,
+      });
+    } catch (err) {
+      console.warn('Groq pricing failed (falling back to heuristic):', err.message);
+      pricing = null;
+      confidence = 'low';
+    }
+
+    const base = pricing || {};
+
+    const result = {
+      rawMaterialCost: raw,
+      makingCost: make,
+      totalCost,
+      suggestedRetailPrice: Number(base.suggestedRetailPrice) || (totalCost > 0 ? Math.round(totalCost * 2.5) : 499),
+      suggestedWholesalePrice: Number(base.suggestedWholesalePrice) || (totalCost > 0 ? Math.round(totalCost * 1.8) : 350),
+      minRetailPrice: Number(base.minRetailPrice) || (totalCost > 0 ? totalCost : 299),
+      maxRetailPrice: Number(base.maxRetailPrice) || (totalCost > 0 ? Math.round(totalCost * 4) : 999),
+      currency: base.currency || 'INR',
+      confidence: base.confidence || confidence,
+      competitors: Array.isArray(base.competitors) && base.competitors.length ? base.competitors : competitorRefs.slice(0, 3).map((r) => ({
+        platform: hostnameOf(r.url),
+        productName: stripDomain(r.title),
+        price: 0,
+        currency: 'INR',
+      })),
+      reasoning: base.reasoning || fallbackPricing({ transcript, rawMaterialCost, makingCost }).reasoning,
+    };
+
+    res.json({ pricing: result, search: searchInfo });
+  } catch (err) {
+    console.error('generate-pricing error:', err);
+    res.status(500).json({ error: err.message || 'Server error' });
+  }
+});
+
+function hostnameOf(url) {
+  try {
+    const u = new URL(url);
+    return (u.hostname || 'Web').replace(/^www\./, '');
+  } catch {
+    return 'Web';
+  }
+}
+
+function stripDomain(title) {
+  return (title || '').replace(/\s*[-|]\s*(Amazon|Flipkart|Meesho|Etsy|IndiaMART|Snapdeal|MyFrido|Nykaa)(\.in|\.com)?.*$/i, '') || title;
+}
 
 app.listen(PORT, () => {
   console.log(`ArtisanAI server running on http://localhost:${PORT}`);

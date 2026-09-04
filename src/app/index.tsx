@@ -1,7 +1,9 @@
 import { StyleSheet, View, Pressable, ScrollView, Text } from 'react-native';
 import { router } from 'expo-router';
+import { useTranslation } from '@/i18n/LanguageContext';
 
 export default function HomeScreen() {
+  const { t } = useTranslation();
   return (
     <ScrollView
       style={styles.container}
@@ -11,8 +13,8 @@ export default function HomeScreen() {
       {/* Header */}
       <View style={styles.header}>
         <View>
-          <Text style={styles.appName}>ArtisanAI</Text>
-          <Text style={styles.greeting}>Namaste! 👋</Text>
+          <Text style={styles.appName}>{t('appName')}</Text>
+          <Text style={styles.greeting}>{t('greeting')}</Text>
         </View>
 
         <View style={styles.profileCircle}>
@@ -22,9 +24,9 @@ export default function HomeScreen() {
 
       {/* Welcome Section */}
       <View style={styles.welcomeSection}>
-        <Text style={styles.welcomeTitle}>Grow your craft with AI</Text>
+        <Text style={styles.welcomeTitle}>{t('welcomeTitle')}</Text>
         <Text style={styles.welcomeSubtitle}>
-          Turn your handmade products into professional digital listings.
+          {t('welcomeSubtitle')}
         </Text>
       </View>
 
@@ -38,9 +40,9 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.addProductText}>
-          <Text style={styles.addProductTitle}>Add New Product</Text>
+          <Text style={styles.addProductTitle}>{t('addProductTitle')}</Text>
           <Text style={styles.addProductSubtitle}>
-            Create a professional listing with AI
+            {t('addProductSubtitle')}
           </Text>
         </View>
 
@@ -49,26 +51,26 @@ export default function HomeScreen() {
 
       {/* Quick Actions */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Quick Actions</Text>
+        <Text style={styles.sectionTitle}>{t('quickActions')}</Text>
       </View>
 
       <View style={styles.quickActions}>
         <Pressable style={styles.quickCard}>
           <Text style={styles.quickIcon}>📦</Text>
-          <Text style={styles.quickTitle}>My Products</Text>
-          <Text style={styles.quickSubtitle}>Manage your products</Text>
+          <Text style={styles.quickTitle}>{t('quickProducts')}</Text>
+          <Text style={styles.quickSubtitle}>{t('quickProductsSub')}</Text>
         </Pressable>
 
         <Pressable style={styles.quickCard}>
           <Text style={styles.quickIcon}>🛍️</Text>
-          <Text style={styles.quickTitle}>Marketplace</Text>
-          <Text style={styles.quickSubtitle}>Find buyers</Text>
+          <Text style={styles.quickTitle}>{t('quickMarketplace')}</Text>
+          <Text style={styles.quickSubtitle}>{t('quickMarketplaceSub')}</Text>
         </Pressable>
       </View>
 
       {/* AI Features */}
       <View style={styles.sectionHeader}>
-        <Text style={styles.sectionTitle}>Your AI Business Manager</Text>
+        <Text style={styles.sectionTitle}>{t('aiManagerTitle')}</Text>
       </View>
 
       <View style={styles.featureCard}>
@@ -77,9 +79,9 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.featureText}>
-          <Text style={styles.featureTitle}>Professional Photos</Text>
+          <Text style={styles.featureTitle}>{t('featurePhotos')}</Text>
           <Text style={styles.featureSubtitle}>
-            Enhance product photos automatically
+            {t('featurePhotosSub')}
           </Text>
         </View>
       </View>
@@ -90,9 +92,9 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.featureText}>
-          <Text style={styles.featureTitle}>Speak to Create</Text>
+          <Text style={styles.featureTitle}>{t('featureSpeak')}</Text>
           <Text style={styles.featureSubtitle}>
-            Describe your product in your own language
+            {t('featureSpeakSub')}
           </Text>
         </View>
       </View>
@@ -103,9 +105,9 @@ export default function HomeScreen() {
         </View>
 
         <View style={styles.featureText}>
-          <Text style={styles.featureTitle}>Smart Pricing</Text>
+          <Text style={styles.featureTitle}>{t('featurePricing')}</Text>
           <Text style={styles.featureSubtitle}>
-            Get AI-powered pricing suggestions
+            {t('featurePricingSub')}
           </Text>
         </View>
       </View>
